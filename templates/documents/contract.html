@@ -1,0 +1,1645 @@
+{% extends '../base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- TinyMCE script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/7.1.2/tinymce.min.js" referrerpolicy="origin"></script>
+<style>
+    /* Container that holds the main content and the side panel */
+    .main-container {
+        display: flex;
+        transition: all 0.5s ease; /* Smooth transition when the side panel opens */
+        position: relative;
+        overflow-x: hidden; /* Prevent horizontal overflow */
+    }
+
+    /* Content area that will be pushed aside */
+    .main-content {
+        flex-grow: 1;
+        transition: all 0.5s ease; /* Smooth transition when the side panel opens */
+    }
+
+    /* Side Popup styling */
+    .side-popup {
+        position: absolute;
+        right: 0; /* Make it pop out from the right */
+        top: 0;
+        height: 100%; /* Full height of the viewport */
+        width: 0;
+        overflow-x: hidden;
+        transition: width 0.5s ease; /* Smooth transition */
+        background-color: #f8f9fa;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+    }
+
+    /* When the side panel is active, expand it */
+    .side-popup.active {
+        width: 30%;
+    }
+
+    /* Form styling inside the side popup */
+    .side-popup h2 {
+        margin-bottom: 20px;
+    }
+
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+        .side-popup.active {
+            width: 100%;
+        }
+    }
+
+
+    .tox-tinymce {
+        width: 100% !important;
+    }
+
+    .tox-editor-container {
+        width: 100% !important;
+    }
+
+    /* Custom style for the input field */
+    .form-control.custom-input {
+        background-color: transparent;
+        border: none;
+        border-bottom: 2px solid #000;
+        border-radius: 0;
+        outline: none;
+        box-shadow: none;
+        font-weight: bold;
+        font-size: 18px;
+        color: #000;
+    }
+
+    .form-control.custom-input::placeholder {
+        font-weight: normal;
+        color: #888;
+    }
+
+    .form-control.custom-input:focus {
+        border-bottom-color: #007bff;
+        outline: none;
+    }
+
+    /* Positioning for the button group */
+    #hoverButton {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+    }
+
+    /* Custom styles to make the button circular */
+    .custom-circle-button {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        padding: 0;
+        text-align: center;
+        border: none;
+        background-color: #6c757d;
+        /* Same background color as .btn-secondary */
+        color: white;
+        cursor: pointer;
+        display: flex;
+        /* Use flexbox to center the icon */
+        align-items: center;
+        /* Vertically center */
+        justify-content: center;
+        /* Horizontally center */
+    }
+
+    /* Optional: Adjust the button's font size and icon alignment */
+    .custom-circle-button i {
+        font-size: 18px;
+        /* Adjust the icon size as needed */
+    }
+
+    /* Optional: Additional hover effect for the button */
+    .custom-circle-button:hover {
+        background-color: #5a6268;
+        /* Darker shade on hover */
+    }
+
+    /* Input group styling */
+    .input-group-bottom {
+        width: 100%;
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        padding: 10px;
+        background-color: white;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+    }
+
+    #chat-container {
+        height: calc(100% - 149px); 
+        padding-bottom: 10px;
+    }
+
+    /* Make sure the chat history container doesn't overflow */
+    .chat-history-container {
+        max-height: 100%;
+        overflow-y: auto;
+    }
+    /* Adjusting the textarea */
+    .expanding-textarea {
+        resize: none; /* Prevent resizing */
+        height: 40px; /* Adjust height */
+    }
+
+
+    .expanding-textarea {
+        height: 38px;
+        max-height: 150px;
+        resize: none;
+        overflow-y: auto;
+        border-top-left-radius: 25px;
+        border-bottom-left-radius: 25px;
+    }
+
+    .template-button {
+        user-select: none;
+        /* Disable text selection */
+        -webkit-user-select: none;
+        /* For Safari */
+        -moz-user-select: none;
+        /* For Firefox */
+        -ms-user-select: none;
+        /* For Internet Explorer */
+    }
+
+    .highlight-input {
+        position: absolute;
+        display: none;
+        padding: 5px;
+        border: 1px solid #ccc;
+        background-color: #fff;
+        z-index: 1000;
+    }
+
+    .plantillas-icon-btn .plantillas-icon {
+        color: rgba(0, 0, 255, 0.538);
+    }
+
+    .plantillas-icon-btn:hover .plantillas-icon {
+        color: white;
+    }
+
+    .expanding-textarea {
+        height: 12px;
+        /* Same as the height of a typical input */
+        max-height: 150px;
+        /* Maximum height */
+        overflow-y: auto;
+        /* Enable scrolling if content exceeds the max height */
+        border-top-left-radius: 25px;
+        border-bottom-left-radius: 25px;
+        resize: none;
+    }
+
+    /* General chat bubble styles */
+
+/* User's chat bubble (on the right) */
+.user-bubble {
+    background-color: #222e3c;
+    color: white;
+    margin-left: auto;
+    text-align: left;
+    display: block;
+}
+
+/* AI's chat bubble (on the left) */
+.ai-bubble {
+    background-color: #5a71d2; 
+    color: white;
+    margin-right: auto;
+    margin-bottom: 9px;
+    text-align: left;
+    display: block;
+    padding: 10px 15px;
+    border-radius: 7px;
+    word-wrap: break-word;
+}
+
+/* Ensures chat bubbles don't overflow horizontally */
+#chatHistoryContainer {
+    flex-direction: column;
+}
+
+/* Clearfix for chat bubbles to stay in the right position */
+.message {
+    width: 100%;
+    display: flex;
+    flex-direction: column; /* Stack both bubbles in each message vertically */
+    justify-content: flex-start;
+    align-items: flex-start;
+
+}
+
+.chat-bubble {
+    padding: 10px 15px;
+    border-radius: 15px; /* Adjust to whichever value you prefer */
+    margin-bottom: 10px;
+    max-width: 90%; /* Same max-width for both */
+    word-wrap: break-word;
+    display: block; /* Use block if you want them stacked, inline-block will put them next to each other */
+}
+
+.highlight {
+    background-color: yellow; /* Highlight background color */
+    font-weight: bold;        /* Make text bold (optional) */
+    padding: 2px 4px;         /* Add some padding around the text */
+    border-radius: 5px;       /* Optional: round the corners for a smoother look */
+    color: black;             /* Set text color */
+}
+
+
+
+
+
+/* Make the right side of the modal a scroll area */
+.modal-body-templates {
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Cards should take up most of the space, leaving some room on the right */
+.card-container {
+    flex: 0.9; /* Take up 90% of the modal width */
+    overflow: auto; /* Enable scrolling inside the card if needed */
+}
+
+/* Scroll area on the right */
+.scroll-area {
+    flex: 0.1; /* This leaves 10% of the modal width for scrolling */
+    background-color: #f1f1f1; /* A subtle background to indicate the scroll area */
+    cursor: pointer; /* Make it clear that this area can be interacted with */
+    border-left: 2px dashed #ccc; /* Optional: Add a border to further highlight the scroll area */
+    position: relative; /* Position relative to contain the icon */
+    border-radius: 15px;
+}
+
+/* Make the icon stay fixed and always visible */
+.scroll-area i {
+    position: fixed;
+    right: 10px; /* Place it near the right edge */
+    top: 20px; /* Place it at the top of the modal, adjust as needed */
+    font-size: 24px; /* Adjust the size as needed */
+    transition: color 0.2s ease;
+}
+
+</style>
+
+<div class="main-container">
+    <div class="main-content">
+        <div class="list-wrapper-contract container">
+            <form id="contractProjectForm" method="post">
+                {% csrf_token %}
+                <!-- Name Field -->
+                <div class="form-group" style="margin-top: 7px;">
+                    <input type="text" id="name" name="name" maxlength="100" class="form-control custom-input"
+                        placeholder="Introduzca el nombre del proyecto" value="{{ contract.name }}">
+                </div>
+                <!-- Button trigger modal -->
+                <button type="button" class="btn btn-outline-primary plantillas-icon-btn" data-bs-toggle="modal"
+                    data-bs-target="#exampleModal" style="margin-top: 4px; margin-bottom: 4px; border-radius: 28px;">
+                    <i class="align-middle me-2 far fa-fw fa-file-alt plantillas-icon"></i>Plantillas
+                </button>
+
+                <!-- Description Field -->
+                <div class="form-group">
+                    <textarea id="description" name="description" class="form-control" placeholder="Introduzca la descripción del proyecto"
+                        rows="10"></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="btn-group dropup" id="hoverButton">
+                    <button type="button" class="custom-circle-button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-fw fa-plus"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <button type="submit" class="dropdown-item"><i style="color: gray;" class="align-middle me-2 far fa-fw fa-save"></i> Guardar</button>
+                        </li>
+                        <li><a class="dropdown-item" href="#"><i style="color: gray;" class="align-middle me-2 far fa-fw fa-file-pdf"></i> PDF</a></li>
+                        <li>
+                            <button class="dropdown-item" id="openSubtaskPopup" data-contract-id="{{ contract.id }}">
+                                <i style="color: gray;" class="align-middle me-2 fab fa-fw fa-rocketchat"></i> Chat de IA
+                            </button>                            
+                        </li>
+                    </ul>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Side Panel for AI chat -->
+    <div class="side-popup" id="createSubtaskPopup">
+        <div style="padding: 12px;" class="d-flex">
+            <h2>Chat de IA</h2>
+            <button type="button" class="btn-close ms-auto" id="closePopup" aria-label="Close"></button>
+        </div>
+
+        <!-- AI Interaction Section -->
+        <div id="chat-container" style="padding: 12px;">
+            <div id="chatHistoryContainer" class="chat-history-container">
+                <!-- Chat history will be appended here -->
+            </div>
+        </div>
+
+        <!-- Input Group at the Bottom -->
+        <div class="input-group-bottom">
+            <div id="highlightDisplay"></div>
+            <div class="input-group">
+                <textarea id="aiInput" class="form-control expanding-textarea" placeholder="Type your message..." aria-label="Message"></textarea>
+                <button id="aiSend" class="btn btn-outline-primary" type="button" style="border-top-right-radius: 25px; border-bottom-right-radius: 25px;">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="exampleModalLabel"><i style="color: gray;"
+                        class="align-middle me-2 far fa-fw fa-file-alt"></i> Plantillas</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body modal-body-templates">
+                <div class="template-options mt-3 card-container">
+                    <div class="card" style="border: 1px solid gray;">
+                        <div style="width: auto; height: 300px;" type="button"
+                            class="template-button overflow-auto card-body" data-template="template1">
+                            <div class="container template-button">
+                                <h2>Acuerdo de Servicios</h2>
+                                <p>Este Acuerdo de Servicios ("Acuerdo") se celebra el [Fecha] entre:</p>
+
+                                <h4>1. PARTES</h4>
+                                <p><strong>Proveedor de Servicios:</strong> [Nombre Completo del Proveedor], ubicado en
+                                    [Dirección del Proveedor].</p>
+                                <p><strong>Cliente:</strong> [Nombre Completo del Cliente], ubicado en [Dirección del
+                                    Cliente].</p>
+                                <p>El Proveedor de Servicios y el Cliente pueden ser referidos colectivamente como las
+                                    "Partes".</p>
+
+                                <h4>2. ALCANCE DE LOS SERVICIOS</h4>
+                                <p>El Proveedor de Servicios se compromete a realizar los siguientes servicios para el
+                                    Cliente: [Describa los servicios que se proporcionarán en detalle].</p>
+
+                                <h4>3. PLAZO DEL ACUERDO</h4>
+                                <p>Este Acuerdo comenzará el [Fecha de Inicio] y continuará:</p>
+                                <ul>
+                                    <li>Hasta el [Fecha de Finalización], o</li>
+                                    <li>Hasta la finalización de los servicios, o</li>
+                                    <li>De manera continua hasta que se rescinda según lo establecido en la Sección 6.
+                                    </li>
+                                </ul>
+
+                                <h4>4. TÉRMINOS DE PAGO</h4>
+                                <p>El Cliente se compromete a pagar al Proveedor de Servicios:</p>
+                                <ul>
+                                    <li><strong>Tarifa Fija:</strong> $[Cantidad] por todo el proyecto.</li>
+                                    <li><strong>Tarifa por Hora:</strong> $[Cantidad] por hora, con un total estimado de
+                                        [Horas Estimadas] horas.</li>
+                                </ul>
+
+                                <h4>5. GASTOS</h4>
+                                <p>El Cliente acepta reembolsar al Proveedor de Servicios cualquier gasto razonable
+                                    incurrido durante la prestación de los servicios.</p>
+
+                                <h4>6. RESCISIÓN</h4>
+                                <p>Este Acuerdo puede ser rescindido por cualquiera de las partes con [Número de Días]
+                                    días de aviso por escrito.</p>
+
+                                <h4>7. CONFIDENCIALIDAD</h4>
+                                <p>El Proveedor de Servicios se compromete a no divulgar ninguna información
+                                    confidencial recibida del Cliente.</p>
+
+                                <h4>8. LEGISLACIÓN APLICABLE</h4>
+                                <p>Este Acuerdo se regirá por las leyes de [Estado/País].</p>
+
+                                <h4>9. ACUERDO COMPLETO</h4>
+                                <p>Este Acuerdo representa el entendimiento completo entre las Partes.</p>
+
+                                <div>
+                                    <p><strong>Proveedor de Servicios:</strong> Firma: [Nombre del Proveedor] Fecha:
+                                        [Fecha]</p>
+                                    <p><strong>Cliente:</strong> Firma: [Nombre del Cliente] Fecha: [Fecha]</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button"
+                                class="template-button overflow-auto card-body" data-template="template2">
+                                <div class="container template-button">
+                                    <h1 style="text-align: center;">CONTRATO INDIVIDUAL DE TRABAJO</h1>
+        
+                                    <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Contrato Individual de Trabajo entre:</p>
+                            
+                                    <h3>1. EL PATRÓN</h3>
+                                    <p style="text-align: justify;">Nombre: [Nombre del Patrón]<br>
+                                    Domicilio: [Domicilio del Patrón]<br>
+                                    Representante Legal: [Nombre del Representante, si aplica]</p>
+                            
+                                    <h3>2. EL TRABAJADOR</h3>
+                                    <p style="text-align: justify;">Nombre: [Nombre del Trabajador]<br>
+                                    Domicilio: [Domicilio del Trabajador]<br>
+                                    Nacionalidad: [Nacionalidad]<br>
+                                    Edad: [Edad]<br>
+                                    Estado Civil: [Estado Civil]<br>
+                                    CURP: [CURP]</p>
+                            
+                                    <h3 style="text-align: center;">DECLARACIONES</h3>
+                                    <p style="text-align: justify;">1. Ambas partes manifiestan su libre voluntad de celebrar este contrato, sin mediar error, dolo o coacción.</p>
+                                    <p style="text-align: justify;">2. El Trabajador se obliga a prestar sus servicios personales al Patrón bajo las condiciones que se estipulan a continuación.</p>
+                            
+                                    <h4 style="text-align: center;">CLÁUSULAS</h4>
+                            
+                                    <h4 style="text-align: center;">PRIMERA: PUESTO Y FUNCIONES</h4>
+                                    <p style="text-align: justify;">El Trabajador se compromete a prestar sus servicios como [Puesto], realizando las siguientes funciones: [Funciones detalladas]. El Trabajador se obliga a desempeñar sus funciones con la debida diligencia y profesionalismo.</p>
+                            
+                                    <h4 style="text-align: center;">SEGUNDA: JORNADA DE TRABAJO</h4>
+                                    <p style="text-align: justify;">La jornada de trabajo será de [Número de horas] horas diarias, de [Hora de inicio] a [Hora de término], de lunes a [Día de la semana], conforme a la Ley Federal del Trabajo. El trabajador tiene derecho a los descansos correspondientes conforme a la ley.</p>
+                            
+                                    <h4 style="text-align: center;">TERCERA: SALARIO</h4>
+                                    <p style="text-align: justify;">El salario del Trabajador será de $[Monto] [MXN/USD], pagadero de manera [semanal/quincenal/mensual], mediante [forma de pago: transferencia bancaria/cheque/efectivo]. Además, el trabajador tiene derecho a las prestaciones de ley, tales como aguinaldo, vacaciones, prima vacacional, así como otros beneficios acordados:</p>
+                                    <ul style="margin-left: 40px;">
+                                        <li>Seguro Médico: El Trabajador tendrá derecho a cobertura de seguro médico proporcionado por el Patrón a través de [Institución Aseguradora].</li>
+                                        <li>Bonificaciones: El Trabajador podrá recibir bonificaciones basadas en el rendimiento laboral, sujetas a los siguientes criterios: [Detalles de evaluación de rendimiento].</li>
+                                        <li>Otras prestaciones: [Especificar cualquier otra prestación o beneficio].</li>
+                                    </ul>
+                            
+                                    <h4 style="text-align: center;">CUARTA: DURACIÓN DEL CONTRATO</h4>
+                                    <p style="text-align: justify;">Este contrato es de [duración indefinida/plazo fijo], con una vigencia de [especificar si es de plazo fijo], comenzando el [Fecha de inicio] y terminando el [Fecha de término] (si aplica).</p>
+                            
+                                    <h4 style="text-align: center;">QUINTA: OBLIGACIONES DEL TRABAJADOR</h4>
+                                    <p style="text-align: justify;">El Trabajador se compromete a:</p>
+                                    <ul style="margin-left: 40px;">
+                                        <li>Cumplir con las tareas asignadas en el puesto de trabajo.</li>
+                                        <li>Respetar las normativas internas de la empresa.</li>
+                                        <li>Guardar confidencialidad sobre la información a la que tenga acceso.</li>
+                                    </ul>
+                            
+                                    <h4 style="text-align: center;">SEXTA: OBLIGACIONES DEL PATRÓN</h4>
+                                    <p style="text-align: justify;">El Patrón se compromete a:</p>
+                                    <ul style="margin-left: 40px;">
+                                        <li>Pagar puntualmente el salario acordado.</li>
+                                        <li>Proporcionar las herramientas necesarias para el desempeño del trabajo.</li>
+                                        <li>Otorgar las prestaciones laborales estipuladas por la Ley Federal del Trabajo y este contrato.</li>
+                                    </ul>
+                            
+                                    <h4 style="text-align: center;">SÉPTIMA: TERMINACIÓN DEL CONTRATO</h4>
+                                    <p style="text-align: justify;">Este contrato podrá darse por terminado en los casos que establece la Ley Federal del Trabajo, tales como el mutuo acuerdo, renuncia del trabajador, o causas justificadas para despido. En caso de despido injustificado, el Patrón deberá otorgar al Trabajador la indemnización correspondiente, conforme a lo establecido en la ley.</p>
+                            
+                                    <h4 style="text-align: center;">OCTAVA: CLÁUSULA DE CONFIDENCIALIDAD</h4>
+                                    <p style="text-align: justify;">El Trabajador se compromete a no divulgar, durante y después de su relación laboral, ninguna información confidencial o propietaria de la empresa a la que haya tenido acceso en el desempeño de sus funciones.</p>
+                            
+                                    <h4 style="text-align: center;">NOVENA: CLÁUSULA DE NO COMPETENCIA</h4>
+                                    <p style="text-align: justify;">El Trabajador acepta no competir directa o indirectamente con la empresa del Patrón durante un periodo de [Número de meses/años] después de la terminación del contrato, en un área geográfica de [Área geográfica especificada].</p>
+                            
+                                    <h4 style="text-align: center;">DÉCIMA: RESOLUCIÓN DE CONFLICTOS</h4>
+                                    <p style="text-align: justify;">Las partes acuerdan resolver cualquier conflicto derivado de la interpretación o cumplimiento de este contrato, primero de manera amistosa. Si no se llega a una solución, las partes se someterán al arbitraje conforme a la legislación mexicana.</p>
+                            
+                                    <h4 style="text-align: center;">DÉCIMA PRIMERA: CLÁUSULA DE NOTARIZACIÓN</h4>
+                                    <p style="text-align: justify;">A solicitud de cualquiera de las partes, el presente contrato podrá ser elevado a escritura pública ante notario, para efectos de mayor seguridad jurídica. (Este paso es opcional y no es obligatorio para la validez del contrato).</p>
+                            
+                                    <h4 style="text-align: center;">DÉCIMA SEGUNDA: LEGISLACIÓN APLICABLE</h4>
+                                    <p style="text-align: justify;">Este contrato se rige bajo las disposiciones de la Ley Federal del Trabajo y demás leyes aplicables en los Estados Unidos Mexicanos.</p>
+                            
+                                    <div style="margin-top: 50px;">
+                                        <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                            <p style="margin-bottom: 50px;">Firma del Patrón</p>
+                                            <p>Nombre: _______________________</p>
+                                        </div>
+                                        <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                            <p style="margin-bottom: 50px;">Firma del Trabajador</p>
+                                            <p>Nombre: _______________________</p>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template3">
+                                <div class="container template-button">
+                                    <h1 style="text-align: center;">CONTRATO DE COMPRAVENTA</h1>
+        
+                                    <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Contrato de Compraventa entre:</p>
+                            
+                                    <h3 style="text-align: center;">1. EL VENDEDOR</h3>
+                                    <p style="text-align: justify;">Nombre: [Nombre del Vendedor]<br>
+                                    Domicilio: [Domicilio del Vendedor]<br>
+                                    CURP: [CURP del Vendedor]</p>
+                            
+                                    <h3 style="text-align: center;">2. EL COMPRADOR</h3>
+                                    <p style="text-align: justify;">Nombre: [Nombre del Comprador]<br>
+                                    Domicilio: [Domicilio del Comprador]<br>
+                                    CURP: [CURP del Comprador]</p>
+                            
+                                    <h3 style="text-align: center;">DECLARACIONES</h3>
+                                    <p style="text-align: justify;">Ambas partes declaran que tienen la capacidad legal para celebrar este contrato y que el bien objeto de la compraventa se encuentra libre de gravámenes, embargos o cualquier otra limitación que afecte su libre disposición.</p>
+                            
+                                    <h3 style="text-align: center;">CLÁUSULAS</h3>
+                            
+                                    <h4 style="text-align: center;">PRIMERA: OBJETO DEL CONTRATO</h4>
+                                    <p style="text-align: justify;">El Vendedor se obliga a vender al Comprador el bien descrito a continuación: [Descripción detallada del bien, incluyendo características y condiciones].</p>
+                            
+                                    <h4 style="text-align: center;">SEGUNDA: PRECIO</h4>
+                                    <p style="text-align: justify;">El precio pactado para la compraventa del bien es de $[Monto] [MXN/USD], que será pagado por el Comprador de la siguiente manera: [Método de pago: efectivo, transferencia bancaria, etc.].</p>
+                            
+                                    <h4 style="text-align: center;">TERCERA: ENTREGA DEL BIEN</h4>
+                                    <p style="text-align: justify;">El Vendedor se obliga a entregar el bien al Comprador en el estado en que se encuentra y en el domicilio ubicado en [Domicilio de entrega], en un plazo de [Número de días] días hábiles a partir de la firma del presente contrato.</p>
+                            
+                                    <h4 style="text-align: center;">CUARTA: GARANTÍA</h4>
+                                    <p style="text-align: justify;">El Vendedor garantiza que el bien se encuentra en condiciones de uso y libre de defectos. En caso de que el bien presente defectos ocultos, el Vendedor se compromete a responder por los mismos durante un periodo de [Número de meses] meses a partir de la fecha de entrega.</p>
+                            
+                                    <h4 style="text-align: center;">QUINTA: GASTOS E IMPUESTOS</h4>
+                                    <p style="text-align: justify;">Los gastos e impuestos derivados de la formalización de este contrato, incluyendo los de escrituración, correrán a cargo de [Parte responsable: Comprador/Vendedor].</p>
+                            
+                                    <h4 style="text-align: center;">SEXTA: LEGISLACIÓN APLICABLE</h4>
+                                    <p style="text-align: justify;">El presente contrato se rige por las disposiciones del Código Civil de los Estados Unidos Mexicanos y demás leyes aplicables en la materia.</p>
+                            
+                                    <div style="margin-top: 50px;">
+                                        <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                            <p style="margin-bottom: 50px;">Firma del Vendedor</p>
+                                            <p>Nombre: _______________________</p>
+                                        </div>
+                                        <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                            <p style="margin-bottom: 50px;">Firma del Comprador</p>
+                                            <p>Nombre: _______________________</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template4">
+                                <div class="container template-button">
+                                    <h1 style="text-align: center;">CONTRATO DE PRÉSTAMO</h1>
+        
+                                        <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Contrato de Préstamo entre:</p>
+
+                                        <h3>1. EL PRESTAMISTA</h3>
+                                        <p style="text-align: justify;">Nombre: [Nombre del Prestamista]<br>
+                                        Domicilio: [Domicilio del Prestamista]<br>
+                                        CURP: [CURP del Prestamista]</p>
+
+                                        <h3>2. EL DEUDOR</h3>
+                                        <p style="text-align: justify;">Nombre: [Nombre del Deudor]<br>
+                                        Domicilio: [Domicilio del Deudor]<br>
+                                        CURP: [CURP del Deudor]</p>
+
+                                        <h3 style="text-align: center;">DECLARACIONES</h3>
+                                        <p style="text-align: justify;">Ambas partes declaran que tienen la capacidad legal para celebrar este contrato y que el préstamo otorgado se encuentra libre de cualquier gravamen o condición que afecte la legalidad del mismo.</p>
+
+                                        <h3 style="text-align: center;">CLÁUSULAS</h3>
+
+                                        <h4 style="text-align: center;">PRIMERA: MONTO DEL PRÉSTAMO</h4>
+                                        <p style="text-align: justify;">El Prestamista se obliga a prestar al Deudor la cantidad de $[Monto del Préstamo] [MXN/USD].</p>
+
+                                        <h4 style="text-align: center;">SEGUNDA: PLAZO Y FORMA DE PAGO</h4>
+                                        <p style="text-align: justify;">El Deudor se obliga a devolver el préstamo en un plazo de [Número de meses] meses, mediante pagos de $[Monto de pago] [MXN/USD], que deberán realizarse de forma [semanal/quincenal/mensual] a partir de [Fecha de inicio de pagos].</p>
+
+                                        <h4 style="text-align: center;">TERCERA: INTERESES</h4>
+                                        <p style="text-align: justify;">El préstamo devengará un interés del [Tasa de interés]% anual, que será calculado sobre el saldo pendiente del préstamo. Los intereses serán pagados junto con los pagos del préstamo en las fechas acordadas.</p>
+
+                                        <h4 style="text-align: center;">CUARTA: GARANTÍA</h4>
+                                        <p style="text-align: justify;">Como garantía del presente préstamo, el Deudor ofrece [Descripción de la garantía, si aplica], que será devuelta una vez liquidado el préstamo en su totalidad.</p>
+
+                                        <h4 style="text-align: center;">QUINTA: INCUMPLIMIENTO</h4>
+                                        <p style="text-align: justify;">En caso de incumplimiento por parte del Deudor en el pago de cualquiera de las cantidades estipuladas, el Prestamista podrá exigir el pago inmediato de la totalidad del préstamo más los intereses generados hasta la fecha de pago.</p>
+
+                                        <h4 style="text-align: center;">SEXTA: LEGISLACIÓN APLICABLE</h4>
+                                        <p style="text-align: justify;">El presente contrato se rige por las disposiciones del Código Civil de los Estados Unidos Mexicanos y demás leyes aplicables en la materia.</p>
+
+                                        <div style="margin-top: 50px;">
+                                            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                                <p style="margin-bottom: 50px;">Firma del Prestamista</p>
+                                                <p>Nombre: _______________________</p>
+                                            </div>
+                                            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                                <p style="margin-bottom: 50px;">Firma del Deudor</p>
+                                                <p>Nombre: _______________________</p>
+                                            </div>
+                                        </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template5">
+                                <div class="container template-button">
+                                    <h1 style="text-align: center;">CONVENIO DE GUARDA Y CUSTODIA</h1>
+        
+                                    <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Convenio de Guarda y Custodia entre:</p>
+                            
+                                    <h3>1. EL PADRE</h3>
+                                    <p style="text-align: justify;">Nombre: [Nombre del Padre]<br>
+                                    Domicilio: [Domicilio del Padre]<br>
+                                    CURP: [CURP del Padre]</p>
+                            
+                                    <h3>2. LA MADRE</h3>
+                                    <p style="text-align: justify;">Nombre: [Nombre de la Madre]<br>
+                                    Domicilio: [Domicilio de la Madre]<br>
+                                    CURP: [CURP de la Madre]</p>
+                            
+                                    <h3 style="text-align: center;">3. EL MENOR</h3>
+                                    <p style="text-align: justify;">Nombre del menor: [Nombre del Menor]<br>
+                                    Fecha de nacimiento: [Fecha de nacimiento del menor]</p>
+                            
+                                    <h3 style="text-align: center;">DECLARACIONES</h3>
+                                    <p style="text-align: justify;">Ambas partes declaran que tienen la capacidad legal para celebrar este convenio, que buscan proteger el interés superior del menor y que han decidido de común acuerdo regular la guarda, custodia, y régimen de convivencia del menor.</p>
+                            
+                                    <h3 style="text-align: center;">CLÁUSULAS</h3>
+                            
+                                    <h4 style="text-align: center;">PRIMERA: GUARDA Y CUSTODIA</h4>
+                                    <p style="text-align: justify;">La guarda y custodia del menor será ejercida por [Nombre del progenitor custodio]. El menor residirá en el domicilio de [Nombre del progenitor custodio], ubicado en [Domicilio del progenitor custodio].</p>
+                            
+                                    <h4 style="text-align: center;">SEGUNDA: RÉGIMEN DE CONVIVENCIA</h4>
+                                    <p style="text-align: justify;">El progenitor no custodio, [Nombre del progenitor no custodio], tendrá derecho a convivir con el menor conforme al siguiente régimen de visitas:
+                                    </p>
+                                    <ul style="margin-left: 40px;">
+                                        <li>Días de visita: [Días de la semana/mes].</li>
+                                        <li>Horarios: [Horario de visitas].</li>
+                                        <li>Lugar de encuentro: [Lugar donde se realizarán las visitas].</li>
+                                    </ul>
+                            
+                                    <h4 style="text-align: center;">TERCERA: PENSIÓN ALIMENTICIA</h4>
+                                    <p style="text-align: justify;">El progenitor no custodio, [Nombre del progenitor no custodio], se compromete a otorgar una pensión alimenticia mensual de $[Monto de la pensión] [MXN/USD], que deberá ser pagada el [día] de cada mes mediante [forma de pago: transferencia bancaria/efectivo].</p>
+                            
+                                    <h4 style="text-align: center;">CUARTA: DECISIONES IMPORTANTES</h4>
+                                    <p style="text-align: justify;">Ambos progenitores se comprometen a tomar de común acuerdo las decisiones importantes respecto a la salud, educación, y bienestar general del menor.</p>
+                            
+                                    <h4 style="text-align: center;">QUINTA: MODIFICACIONES</h4>
+                                    <p style="text-align: justify;">Cualquier modificación al presente convenio deberá realizarse por escrito y ser firmada por ambas partes.</p>
+                            
+                                    <h4 style="text-align: center;">SEXTA: LEGISLACIÓN APLICABLE</h4>
+                                    <p style="text-align: justify;">El presente convenio se rige por las disposiciones del Código Civil y demás leyes aplicables en los Estados Unidos Mexicanos, teniendo como objetivo principal el interés superior del menor.</p>
+                            
+                                    <div style="margin-top: 50px;">
+                                        <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                            <p style="margin-bottom: 50px;">Firma del Padre</p>
+                                            <p>Nombre: _______________________</p>
+                                        </div>
+                                        <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                            <p style="margin-bottom: 50px;">Firma de la Madre</p>
+                                            <p>Nombre: _______________________</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template6">
+                                <div class="container template-button">
+                                    <h1 style="text-align: center;">CONTRATO DE SOCIEDAD</h1>
+        
+                                    <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Contrato de Sociedad entre:</p>
+
+                                    <h3>1. SOCIOS</h3>
+                                    <p style="text-align: justify;">
+                                        <strong>Primer socio:</strong> [Nombre del Primer Socio]<br>
+                                        Domicilio: [Domicilio del Primer Socio]<br>
+                                        CURP: [CURP del Primer Socio]<br><br>
+                                        <strong>Segundo socio:</strong> [Nombre del Segundo Socio]<br>
+                                        Domicilio: [Domicilio del Segundo Socio]<br>
+                                        CURP: [CURP del Segundo Socio]
+                                    </p>
+
+                                    <h3 style="text-align: center;">DECLARACIONES</h3>
+                                    <p style="text-align: justify;">Ambas partes declaran que tienen la capacidad legal para celebrar este contrato y que han decidido formar una sociedad bajo los términos que se estipulan a continuación.</p>
+
+                                    <h3 style="text-align: center;">CLÁUSULAS</h3>
+
+                                    <h4 style="text-align: center;">PRIMERA: OBJETO DE LA SOCIEDAD</h4>
+                                    <p style="text-align: justify;">El objeto de la sociedad será [Descripción del objeto social], y se llevará a cabo a través de [Descripción de actividades o servicios a prestar].</p>
+
+                                    <h4 style="text-align: center;">SEGUNDA: APORTACIONES</h4>
+                                    <p style="text-align: justify;">Cada socio se compromete a realizar las siguientes aportaciones:
+                                    </p>
+                                    <ul style="margin-left: 40px;">
+                                        <li><strong>Primer socio:</strong> [Descripción de aportación del primer socio].</li>
+                                        <li><strong>Segundo socio:</strong> [Descripción de aportación del segundo socio].</li>
+                                    </ul>
+
+                                    <h4 style="text-align: center;">TERCERA: PARTICIPACIÓN EN UTILIDADES Y PÉRDIDAS</h4>
+                                    <p style="text-align: justify;">Las utilidades y pérdidas serán distribuidas entre los socios en la proporción de [Proporción de distribución de utilidades/pérdidas], conforme a las aportaciones de cada uno.</p>
+
+                                    <h4 style="text-align: center;">CUARTA: ADMINISTRACIÓN</h4>
+                                    <p style="text-align: justify;">La administración de la sociedad estará a cargo de [Nombre del socio administrador o ambos socios], quien se encargará de la toma de decisiones diarias, manejo de recursos y cumplimiento del objeto social.</p>
+
+                                    <h4 style="text-align: center;">QUINTA: DURACIÓN DE LA SOCIEDAD</h4>
+                                    <p style="text-align: justify;">La duración de la sociedad será de [Número de años] años, comenzando el [Fecha de inicio], salvo que se disuelva anticipadamente conforme a las disposiciones de este contrato.</p>
+
+                                    <h4 style="text-align: center;">SEXTA: DISOLUCIÓN</h4>
+                                    <p style="text-align: justify;">La sociedad podrá disolverse por cualquiera de las siguientes causas:
+                                    </p>
+                                    <ul style="margin-left: 40px;">
+                                        <li>Mutuo acuerdo de los socios.</li>
+                                        <li>Incapacidad de alguno de los socios para cumplir con sus aportaciones.</li>
+                                        <li>Por orden judicial o legal.</li>
+                                    </ul>
+
+                                    <h4 style="text-align: center;">SÉPTIMA: LEGISLACIÓN APLICABLE</h4>
+                                    <p style="text-align: justify;">Este contrato se rige por las disposiciones del Código de Comercio y demás leyes aplicables en los Estados Unidos Mexicanos.</p>
+
+                                    <div style="margin-top: 50px;">
+                                        <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                            <p style="margin-bottom: 50px;">Firma del Primer Socio</p>
+                                            <p>Nombre: _______________________</p>
+                                        </div>
+                                        <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                                            <p style="margin-bottom: 50px;">Firma del Segundo Socio</p>
+                                            <p>Nombre: _______________________</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template7">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template8">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template9">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template10">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template11">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template12">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template13">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template14">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="template-options mt-3">
+                        <div class="card" style="border: 1px solid gray;">
+                            <div style="width: auto; height: 300px;" type="button" class="template-button overflow-auto card-body" data-template="template15">
+                                <div class="container template-button">
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="scroll-area">
+                    <i class="align-middle me-2 fas fa-fw fa-arrows-alt-v"></i>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Function to get CSRF token from cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+    let autosaveTimer;
+
+// Debounced autosave function (waits 3 seconds after the last change)
+function debouncedAutosave() {
+    clearTimeout(autosaveTimer); // Clear the previous timer
+    autosaveTimer = setTimeout(saveChanges, 3000); // Set a new timer for 3 seconds
+}
+
+// Function to perform save (used for both autosave and manual save)
+function saveChanges() {
+    var name = document.getElementById('name').value;
+    var description = tinymce.get('description').getContent();
+    var url = `http://127.0.0.1:7000/api/contract-update/{{ contract.id }}/`;
+
+    fetch(url, {
+        method: 'PUT',
+        headers: {
+            'Content-type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({
+            'name': name,
+            'description': description
+        })
+    })
+    .then(function (response) {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(function (data) {
+        console.log('Save Success:', data);
+    })
+    .catch(function (error) {
+        console.error('Save Error:', error);
+    });
+}
+
+
+// Attach event listeners to detect changes in the input field
+document.getElementById('name').addEventListener('input', debouncedAutosave);
+
+// Initialize TinyMCE for the description field
+// Initialize TinyMCE for the description field
+tinymce.init({
+    selector: '#description',
+    plugins: 'advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste help wordcount',
+    toolbar: 'undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | code fullscreen',
+    menubar: 'file edit view insert format tools table help',
+    height: '88vh',
+    width: '100%',
+    setup: function (editor) {
+        editor.on('init', function () {
+            editor.getContainer().style.width = '100%';
+
+            // Set content only if there's a description in the database
+            const descriptionFromDatabase = "{{ contract.description|default_if_none:''|escapejs }}";
+            editor.setContent(descriptionFromDatabase);
+        });
+
+        // Detect text selection and display it in the HTML element
+        editor.on('mouseup keyup', function () {
+            const selectedText = editor.selection.getContent({ format: 'text' }).trim();
+            const highlightDisplay = document.getElementById('highlightDisplay');
+
+            // Ensure element exists before trying to set textContent
+            if (highlightDisplay) {
+                if (selectedText) {
+                    // Display the highlighted text in the specified HTML element
+                    highlightDisplay.textContent = selectedText;
+                    console.log('Highlighted Text:', selectedText); // Log to console
+                } else {
+                    // Clear the display if no text is selected
+                    highlightDisplay.textContent = '';
+                }
+            }
+        });
+
+        // Attach debounced autosave to TinyMCE's input and change events
+        editor.on('input', function () {
+            debouncedAutosave(); // Trigger autosave on input events
+        });
+        editor.on('change', function () {
+            debouncedAutosave(); // Trigger autosave on change events
+        });
+    }
+});
+
+// Event listener for the form submission
+document.getElementById('contractProjectForm').addEventListener('submit', function (e) {
+    e.preventDefault(); // Prevent the form from submitting the traditional way
+    saveChanges(); // Manually trigger a save
+});
+
+const templates = {
+    'template1': `
+        <h2>Acuerdo de Servicios</h2>
+        <p>Este Acuerdo de Servicios ("Acuerdo") se celebra el [Fecha] entre:</p>
+
+        <h4>1. PARTES</h4>
+        <p><strong>Proveedor de Servicios:</strong> [Nombre Completo del Proveedor], ubicado en [Dirección del Proveedor].</p>
+        <p><strong>Cliente:</strong> [Nombre Completo del Cliente], ubicado en [Dirección del Cliente].</p>
+        <p>El Proveedor de Servicios y el Cliente pueden ser referidos colectivamente como las "Partes".</p>
+
+        <h4>2. ALCANCE DE LOS SERVICIOS</h4>
+        <p>El Proveedor de Servicios se compromete a realizar los siguientes servicios para el Cliente: [Describa los servicios que se proporcionarán en detalle].</p>
+
+        <h4>3. PLAZO DEL ACUERDO</h4>
+        <p>Este Acuerdo comenzará el [Fecha de Inicio] y continuará:</p>
+        <ul>
+            <li>Hasta el [Fecha de Finalización], o</li>
+            <li>Hasta la finalización de los servicios, o</li>
+            <li>De manera continua hasta que se rescinda según lo establecido en la Sección 6.</li>
+        </ul>
+
+        <h4>4. TÉRMINOS DE PAGO</h4>
+        <p>El Cliente se compromete a pagar al Proveedor de Servicios:</p>
+        <ul>
+            <li><strong>Tarifa Fija:</strong> $[Cantidad] por todo el proyecto.</li>
+            <li><strong>Tarifa por Hora:</strong> $[Cantidad] por hora, con un total estimado de [Horas Estimadas] horas.</li>
+        </ul>
+
+        <h4>5. GASTOS</h4>
+        <p>El Cliente acepta reembolsar al Proveedor de Servicios cualquier gasto razonable incurrido durante la prestación de los servicios.</p>
+
+        <h4>6. RESCISIÓN</h4>
+        <p>Este Acuerdo puede ser rescindido por cualquiera de las partes con [Número de Días] días de aviso por escrito.</p>
+
+        <h4>7. CONFIDENCIALIDAD</h4>
+        <p>El Proveedor de Servicios se compromete a no divulgar ninguna información confidencial recibida del Cliente.</p>
+
+        <h4>8. LEGISLACIÓN APLICABLE</h4>
+        <p>Este Acuerdo se regirá por las leyes de [Estado/País].</p>
+
+        <h4>9. ACUERDO COMPLETO</h4>
+        <p>Este Acuerdo representa el entendimiento completo entre las Partes.</p>
+
+        <div>
+            <p><strong>Proveedor de Servicios:</strong> Firma: [Nombre del Proveedor] Fecha: [Fecha]</p>
+            <p><strong>Cliente:</strong> Firma: [Nombre del Cliente] Fecha: [Fecha]</p>
+        </div>
+    `,
+    'template2': `
+        <h1 style="text-align: center;">CONTRATO INDIVIDUAL DE TRABAJO</h1>
+        
+        <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Contrato Individual de Trabajo entre:</p>
+
+        <h3>1. EL PATRÓN</h3>
+        <p style="text-align: justify;">Nombre: [Nombre del Patrón]<br>
+        Domicilio: [Domicilio del Patrón]<br>
+        Representante Legal: [Nombre del Representante, si aplica]</p>
+
+        <h3>2. EL TRABAJADOR</h3>
+        <p style="text-align: justify;">Nombre: [Nombre del Trabajador]<br>
+        Domicilio: [Domicilio del Trabajador]<br>
+        Nacionalidad: [Nacionalidad]<br>
+        Edad: [Edad]<br>
+        Estado Civil: [Estado Civil]<br>
+        CURP: [CURP]</p>
+
+        <h3 style="text-align: center;">DECLARACIONES</h3>
+        <p style="text-align: justify;">1. Ambas partes manifiestan su libre voluntad de celebrar este contrato, sin mediar error, dolo o coacción.</p>
+        <p style="text-align: justify;">2. El Trabajador se obliga a prestar sus servicios personales al Patrón bajo las condiciones que se estipulan a continuación.</p>
+
+        <h4 style="text-align: center;">CLÁUSULAS</h4>
+
+        <h4 style="text-align: center;">PRIMERA: PUESTO Y FUNCIONES</h4>
+        <p style="text-align: justify;">El Trabajador se compromete a prestar sus servicios como [Puesto], realizando las siguientes funciones: [Funciones detalladas]. El Trabajador se obliga a desempeñar sus funciones con la debida diligencia y profesionalismo.</p>
+
+        <h4 style="text-align: center;">SEGUNDA: JORNADA DE TRABAJO</h4>
+        <p style="text-align: justify;">La jornada de trabajo será de [Número de horas] horas diarias, de [Hora de inicio] a [Hora de término], de lunes a [Día de la semana], conforme a la Ley Federal del Trabajo. El trabajador tiene derecho a los descansos correspondientes conforme a la ley.</p>
+
+        <h4 style="text-align: center;">TERCERA: SALARIO</h4>
+        <p style="text-align: justify;">El salario del Trabajador será de $[Monto] [MXN/USD], pagadero de manera [semanal/quincenal/mensual], mediante [forma de pago: transferencia bancaria/cheque/efectivo]. Además, el trabajador tiene derecho a las prestaciones de ley, tales como aguinaldo, vacaciones, prima vacacional, así como otros beneficios acordados:</p>
+        <ul style="margin-left: 40px;">
+            <li>Seguro Médico: El Trabajador tendrá derecho a cobertura de seguro médico proporcionado por el Patrón a través de [Institución Aseguradora].</li>
+            <li>Bonificaciones: El Trabajador podrá recibir bonificaciones basadas en el rendimiento laboral, sujetas a los siguientes criterios: [Detalles de evaluación de rendimiento].</li>
+            <li>Otras prestaciones: [Especificar cualquier otra prestación o beneficio].</li>
+        </ul>
+
+        <h4 style="text-align: center;">CUARTA: DURACIÓN DEL CONTRATO</h4>
+        <p style="text-align: justify;">Este contrato es de [duración indefinida/plazo fijo], con una vigencia de [especificar si es de plazo fijo], comenzando el [Fecha de inicio] y terminando el [Fecha de término] (si aplica).</p>
+
+        <h4 style="text-align: center;">QUINTA: OBLIGACIONES DEL TRABAJADOR</h4>
+        <p style="text-align: justify;">El Trabajador se compromete a:</p>
+        <ul style="margin-left: 40px;">
+            <li>Cumplir con las tareas asignadas en el puesto de trabajo.</li>
+            <li>Respetar las normativas internas de la empresa.</li>
+            <li>Guardar confidencialidad sobre la información a la que tenga acceso.</li>
+        </ul>
+
+        <h4 style="text-align: center;">SEXTA: OBLIGACIONES DEL PATRÓN</h4>
+        <p style="text-align: justify;">El Patrón se compromete a:</p>
+        <ul style="margin-left: 40px;">
+            <li>Pagar puntualmente el salario acordado.</li>
+            <li>Proporcionar las herramientas necesarias para el desempeño del trabajo.</li>
+            <li>Otorgar las prestaciones laborales estipuladas por la Ley Federal del Trabajo y este contrato.</li>
+        </ul>
+
+        <h4 style="text-align: center;">SÉPTIMA: TERMINACIÓN DEL CONTRATO</h4>
+        <p style="text-align: justify;">Este contrato podrá darse por terminado en los casos que establece la Ley Federal del Trabajo, tales como el mutuo acuerdo, renuncia del trabajador, o causas justificadas para despido. En caso de despido injustificado, el Patrón deberá otorgar al Trabajador la indemnización correspondiente, conforme a lo establecido en la ley.</p>
+
+        <h4 style="text-align: center;">OCTAVA: CLÁUSULA DE CONFIDENCIALIDAD</h4>
+        <p style="text-align: justify;">El Trabajador se compromete a no divulgar, durante y después de su relación laboral, ninguna información confidencial o propietaria de la empresa a la que haya tenido acceso en el desempeño de sus funciones.</p>
+
+        <h4 style="text-align: center;">NOVENA: CLÁUSULA DE NO COMPETENCIA</h4>
+        <p style="text-align: justify;">El Trabajador acepta no competir directa o indirectamente con la empresa del Patrón durante un periodo de [Número de meses/años] después de la terminación del contrato, en un área geográfica de [Área geográfica especificada].</p>
+
+        <h4 style="text-align: center;">DÉCIMA: RESOLUCIÓN DE CONFLICTOS</h4>
+        <p style="text-align: justify;">Las partes acuerdan resolver cualquier conflicto derivado de la interpretación o cumplimiento de este contrato, primero de manera amistosa. Si no se llega a una solución, las partes se someterán al arbitraje conforme a la legislación mexicana.</p>
+
+        <h4 style="text-align: center;">DÉCIMA PRIMERA: CLÁUSULA DE NOTARIZACIÓN</h4>
+        <p style="text-align: justify;">A solicitud de cualquiera de las partes, el presente contrato podrá ser elevado a escritura pública ante notario, para efectos de mayor seguridad jurídica. (Este paso es opcional y no es obligatorio para la validez del contrato).</p>
+
+        <h4 style="text-align: center;">DÉCIMA SEGUNDA: LEGISLACIÓN APLICABLE</h4>
+        <p style="text-align: justify;">Este contrato se rige bajo las disposiciones de la Ley Federal del Trabajo y demás leyes aplicables en los Estados Unidos Mexicanos.</p>
+
+        <div style="margin-top: 50px;">
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Patrón</p>
+                <p>Nombre: _______________________</p>
+            </div>
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Trabajador</p>
+                <p>Nombre: _______________________</p>
+            </div>
+        </div>
+
+    </div>
+    `,
+    'template3': `
+        <h1 style="text-align: center;">CONTRATO DE COMPRAVENTA</h1>
+        
+        <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Contrato de Compraventa entre:</p>
+
+        <h3>1. EL VENDEDOR</h3>
+        <p style="text-align: justify;">Nombre: [Nombre del Vendedor]<br>
+        Domicilio: [Domicilio del Vendedor]<br>
+        CURP: [CURP del Vendedor]</p>
+
+        <h3>2. EL COMPRADOR</h3>
+        <p style="text-align: justify;">Nombre: [Nombre del Comprador]<br>
+        Domicilio: [Domicilio del Comprador]<br>
+        CURP: [CURP del Comprador]</p>
+
+        <h3 style="text-align: center;">DECLARACIONES</h3>
+        <p style="text-align: justify;">Ambas partes declaran que tienen la capacidad legal para celebrar este contrato y que el bien objeto de la compraventa se encuentra libre de gravámenes, embargos o cualquier otra limitación que afecte su libre disposición.</p>
+
+        <h3 style="text-align: center;">CLÁUSULAS</h3>
+
+        <h4 style="text-align: center;">PRIMERA: OBJETO DEL CONTRATO</h4>
+        <p style="text-align: justify;">El Vendedor se obliga a vender al Comprador el bien descrito a continuación: [Descripción detallada del bien, incluyendo características y condiciones].</p>
+
+        <h4 style="text-align: center;">SEGUNDA: PRECIO</h4>
+        <p style="text-align: justify;">El precio pactado para la compraventa del bien es de $[Monto] [MXN/USD], que será pagado por el Comprador de la siguiente manera: [Método de pago: efectivo, transferencia bancaria, etc.].</p>
+
+        <h4 style="text-align: center;">TERCERA: ENTREGA DEL BIEN</h4>
+        <p style="text-align: justify;">El Vendedor se obliga a entregar el bien al Comprador en el estado en que se encuentra y en el domicilio ubicado en [Domicilio de entrega], en un plazo de [Número de días] días hábiles a partir de la firma del presente contrato.</p>
+
+        <h4 style="text-align: center;">CUARTA: GARANTÍA</h4>
+        <p style="text-align: justify;">El Vendedor garantiza que el bien se encuentra en condiciones de uso y libre de defectos. En caso de que el bien presente defectos ocultos, el Vendedor se compromete a responder por los mismos durante un periodo de [Número de meses] meses a partir de la fecha de entrega.</p>
+
+        <h4 style="text-align: center;">QUINTA: GASTOS E IMPUESTOS</h4>
+        <p style="text-align: justify;">Los gastos e impuestos derivados de la formalización de este contrato, incluyendo los de escrituración, correrán a cargo de [Parte responsable: Comprador/Vendedor].</p>
+
+        <h4 style="text-align: center;">SEXTA: LEGISLACIÓN APLICABLE</h4>
+        <p style="text-align: justify;">El presente contrato se rige por las disposiciones del Código Civil de los Estados Unidos Mexicanos y demás leyes aplicables en la materia.</p>
+
+        <div style="margin-top: 50px;">
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Vendedor</p>
+                <p>Nombre: _______________________</p>
+            </div>
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Comprador</p>
+                <p>Nombre: _______________________</p>
+            </div>
+        </div>
+    `,
+    'template4': `
+        <h1 style="text-align: center;">CONTRATO DE PRÉSTAMO</h1>
+        
+        <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Contrato de Préstamo entre:</p>
+
+        <h3>1. EL PRESTAMISTA</h3>
+        <p style="text-align: justify;">Nombre: [Nombre del Prestamista]<br>
+        Domicilio: [Domicilio del Prestamista]<br>
+        CURP: [CURP del Prestamista]</p>
+
+        <h3>2. EL DEUDOR</h3>
+        <p style="text-align: justify;">Nombre: [Nombre del Deudor]<br>
+        Domicilio: [Domicilio del Deudor]<br>
+        CURP: [CURP del Deudor]</p>
+
+        <h3 style="text-align: center;">DECLARACIONES</h3>
+        <p style="text-align: justify;">Ambas partes declaran que tienen la capacidad legal para celebrar este contrato y que el préstamo otorgado se encuentra libre de cualquier gravamen o condición que afecte la legalidad del mismo.</p>
+
+        <h3 style="text-align: center;">CLÁUSULAS</h3>
+
+        <h4 style="text-align: center;">PRIMERA: MONTO DEL PRÉSTAMO</h4>
+        <p style="text-align: justify;">El Prestamista se obliga a prestar al Deudor la cantidad de $[Monto del Préstamo] [MXN/USD].</p>
+
+        <h4 style="text-align: center;">SEGUNDA: PLAZO Y FORMA DE PAGO</h4>
+        <p style="text-align: justify;">El Deudor se obliga a devolver el préstamo en un plazo de [Número de meses] meses, mediante pagos de $[Monto de pago] [MXN/USD], que deberán realizarse de forma [semanal/quincenal/mensual] a partir de [Fecha de inicio de pagos].</p>
+
+        <h4 style="text-align: center;">TERCERA: INTERESES</h4>
+        <p style="text-align: justify;">El préstamo devengará un interés del [Tasa de interés]% anual, que será calculado sobre el saldo pendiente del préstamo. Los intereses serán pagados junto con los pagos del préstamo en las fechas acordadas.</p>
+
+        <h4 style="text-align: center;">CUARTA: GARANTÍA</h4>
+        <p style="text-align: justify;">Como garantía del presente préstamo, el Deudor ofrece [Descripción de la garantía, si aplica], que será devuelta una vez liquidado el préstamo en su totalidad.</p>
+
+        <h4 style="text-align: center;">QUINTA: INCUMPLIMIENTO</h4>
+        <p style="text-align: justify;">En caso de incumplimiento por parte del Deudor en el pago de cualquiera de las cantidades estipuladas, el Prestamista podrá exigir el pago inmediato de la totalidad del préstamo más los intereses generados hasta la fecha de pago.</p>
+
+        <h4 style="text-align: center;">SEXTA: LEGISLACIÓN APLICABLE</h4>
+        <p style="text-align: justify;">El presente contrato se rige por las disposiciones del Código Civil de los Estados Unidos Mexicanos y demás leyes aplicables en la materia.</p>
+
+        <div style="margin-top: 50px;">
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Prestamista</p>
+                <p>Nombre: _______________________</p>
+            </div>
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Deudor</p>
+                <p>Nombre: _______________________</p>
+            </div>
+        </div>
+    `,
+    'template5': `
+        <h1 style="text-align: center;">CONVENIO DE GUARDA Y CUSTODIA</h1>
+            
+        <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Convenio de Guarda y Custodia entre:</p>
+
+        <h3>1. EL PADRE</h3>
+        <p style="text-align: justify;">Nombre: [Nombre del Padre]<br>
+        Domicilio: [Domicilio del Padre]<br>
+        CURP: [CURP del Padre]</p>
+
+        <h3>2. LA MADRE</h3>
+        <p style="text-align: justify;">Nombre: [Nombre de la Madre]<br>
+        Domicilio: [Domicilio de la Madre]<br>
+        CURP: [CURP de la Madre]</p>
+
+        <h3 style="text-align: center;">3. EL MENOR</h3>
+        <p style="text-align: justify;">Nombre del menor: [Nombre del Menor]<br>
+        Fecha de nacimiento: [Fecha de nacimiento del menor]</p>
+
+        <h3 style="text-align: center;">DECLARACIONES</h3>
+        <p style="text-align: justify;">Ambas partes declaran que tienen la capacidad legal para celebrar este convenio, que buscan proteger el interés superior del menor y que han decidido de común acuerdo regular la guarda, custodia, y régimen de convivencia del menor.</p>
+
+        <h3 style="text-align: center;">CLÁUSULAS</h3>
+
+        <h4 style="text-align: center;">PRIMERA: GUARDA Y CUSTODIA</h4>
+        <p style="text-align: justify;">La guarda y custodia del menor será ejercida por [Nombre del progenitor custodio]. El menor residirá en el domicilio de [Nombre del progenitor custodio], ubicado en [Domicilio del progenitor custodio].</p>
+
+        <h4 style="text-align: center;">SEGUNDA: RÉGIMEN DE CONVIVENCIA</h4>
+        <p style="text-align: justify;">El progenitor no custodio, [Nombre del progenitor no custodio], tendrá derecho a convivir con el menor conforme al siguiente régimen de visitas:
+        </p>
+        <ul style="margin-left: 40px;">
+            <li>Días de visita: [Días de la semana/mes].</li>
+            <li>Horarios: [Horario de visitas].</li>
+            <li>Lugar de encuentro: [Lugar donde se realizarán las visitas].</li>
+        </ul>
+
+        <h4 style="text-align: center;">TERCERA: PENSIÓN ALIMENTICIA</h4>
+        <p style="text-align: justify;">El progenitor no custodio, [Nombre del progenitor no custodio], se compromete a otorgar una pensión alimenticia mensual de $[Monto de la pensión] [MXN/USD], que deberá ser pagada el [día] de cada mes mediante [forma de pago: transferencia bancaria/efectivo].</p>
+
+        <h4 style="text-align: center;">CUARTA: DECISIONES IMPORTANTES</h4>
+        <p style="text-align: justify;">Ambos progenitores se comprometen a tomar de común acuerdo las decisiones importantes respecto a la salud, educación, y bienestar general del menor.</p>
+
+        <h4 style="text-align: center;">QUINTA: MODIFICACIONES</h4>
+        <p style="text-align: justify;">Cualquier modificación al presente convenio deberá realizarse por escrito y ser firmada por ambas partes.</p>
+
+        <h4 style="text-align: center;">SEXTA: LEGISLACIÓN APLICABLE</h4>
+        <p style="text-align: justify;">El presente convenio se rige por las disposiciones del Código Civil y demás leyes aplicables en los Estados Unidos Mexicanos, teniendo como objetivo principal el interés superior del menor.</p>
+
+        <div style="margin-top: 50px;">
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Padre</p>
+                <p>Nombre: _______________________</p>
+            </div>
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma de la Madre</p>
+                <p>Nombre: _______________________</p>
+            </div>
+        </div>
+    `,
+    'template6': `
+        <h1 style="text-align: center;">CONTRATO DE SOCIEDAD</h1>
+        
+        <p style="text-align: justify;">En la ciudad de [Ciudad], a [Fecha], se celebra el presente Contrato de Sociedad entre:</p>
+
+        <h3>1. SOCIOS</h3>
+        <p style="text-align: justify;">
+            <strong>Primer socio:</strong> [Nombre del Primer Socio]<br>
+            Domicilio: [Domicilio del Primer Socio]<br>
+            CURP: [CURP del Primer Socio]<br><br>
+            <strong>Segundo socio:</strong> [Nombre del Segundo Socio]<br>
+            Domicilio: [Domicilio del Segundo Socio]<br>
+            CURP: [CURP del Segundo Socio]
+        </p>
+
+        <h3 style="text-align: center;">DECLARACIONES</h3>
+        <p style="text-align: justify;">Ambas partes declaran que tienen la capacidad legal para celebrar este contrato y que han decidido formar una sociedad bajo los términos que se estipulan a continuación.</p>
+
+        <h3 style="text-align: center;">CLÁUSULAS</h3>
+
+        <h4 style="text-align: center;">PRIMERA: OBJETO DE LA SOCIEDAD</h4>
+        <p style="text-align: justify;">El objeto de la sociedad será [Descripción del objeto social], y se llevará a cabo a través de [Descripción de actividades o servicios a prestar].</p>
+
+        <h4 style="text-align: center;">SEGUNDA: APORTACIONES</h4>
+        <p style="text-align: justify;">Cada socio se compromete a realizar las siguientes aportaciones:
+        </p>
+        <ul style="margin-left: 40px;">
+            <li><strong>Primer socio:</strong> [Descripción de aportación del primer socio].</li>
+            <li><strong>Segundo socio:</strong> [Descripción de aportación del segundo socio].</li>
+        </ul>
+
+        <h4 style="text-align: center;">TERCERA: PARTICIPACIÓN EN UTILIDADES Y PÉRDIDAS</h4>
+        <p style="text-align: justify;">Las utilidades y pérdidas serán distribuidas entre los socios en la proporción de [Proporción de distribución de utilidades/pérdidas], conforme a las aportaciones de cada uno.</p>
+
+        <h4 style="text-align: center;">CUARTA: ADMINISTRACIÓN</h4>
+        <p style="text-align: justify;">La administración de la sociedad estará a cargo de [Nombre del socio administrador o ambos socios], quien se encargará de la toma de decisiones diarias, manejo de recursos y cumplimiento del objeto social.</p>
+
+        <h4 style="text-align: center;">QUINTA: DURACIÓN DE LA SOCIEDAD</h4>
+        <p style="text-align: justify;">La duración de la sociedad será de [Número de años] años, comenzando el [Fecha de inicio], salvo que se disuelva anticipadamente conforme a las disposiciones de este contrato.</p>
+
+        <h4 style="text-align: center;">SEXTA: DISOLUCIÓN</h4>
+        <p style="text-align: justify;">La sociedad podrá disolverse por cualquiera de las siguientes causas:
+        </p>
+        <ul style="margin-left: 40px;">
+            <li>Mutuo acuerdo de los socios.</li>
+            <li>Incapacidad de alguno de los socios para cumplir con sus aportaciones.</li>
+            <li>Por orden judicial o legal.</li>
+        </ul>
+
+        <h4 style="text-align: center;">SÉPTIMA: LEGISLACIÓN APLICABLE</h4>
+        <p style="text-align: justify;">Este contrato se rige por las disposiciones del Código de Comercio y demás leyes aplicables en los Estados Unidos Mexicanos.</p>
+
+        <div style="margin-top: 50px;">
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Primer Socio</p>
+                <p>Nombre: _______________________</p>
+            </div>
+            <div style="width: 45%; display: inline-block; text-align: center; margin-top: 50px;">
+                <p style="margin-bottom: 50px;">Firma del Segundo Socio</p>
+                <p>Nombre: _______________________</p>
+            </div>
+        </div>
+    `,
+    'template7': ``,
+    'template8': ``,
+    'template9': ``,
+    'template10': ``,
+    'template11': ``,
+    'template12': ``,
+    'template13': ``,
+    'template14': ``,
+    'template15': ``,
+};
+
+
+document.querySelectorAll('.template-button').forEach(button => {
+    button.addEventListener('click', function () {
+        var templateKey = this.getAttribute('data-template');
+        var templateText = templates[templateKey] || ''; // Use empty string if template is undefined
+
+        var descriptionField = tinymce.get('description'); // Use TinyMCE instance if applicable
+
+        if (descriptionField) {
+            // Append the template text to the existing content if it exists
+            var currentContent = descriptionField.getContent();
+            descriptionField.setContent(currentContent + ' ' + templateText);
+        } else {
+            // Fallback for plain textarea
+            var textarea = document.getElementById('description');
+            textarea.value += ' ' + templateText;
+        }
+    });
+});
+
+// -----------------------------------------------------------
+// --------------- Side panel text messages ------------------
+// -----------------------------------------------------------
+const openSubtaskPopupButton = document.getElementById('openSubtaskPopup');
+const popup = document.getElementById('createSubtaskPopup');
+const mainContent = document.querySelector('.main-content');
+
+// Open the side panel and dynamically set the data-contract-id attribute
+openSubtaskPopupButton.addEventListener('click', function() {
+    const contractProjectId = this.getAttribute('data-contract-id'); // Get the project ID from the button's data attribute
+    if (contractProjectId) {
+        popup.setAttribute('data-contract-id', contractProjectId);  // Set the project ID on the popup
+        console.log('Subtask popup opened with Contract Project ID:', contractProjectId);  // Log the correct ID
+        popup.classList.add('active');
+        mainContent.style.marginRight = '30%';
+
+        // Fetch chat history immediately after opening the popup
+        fetch(`/api/get-chat-history-contract/${contractProjectId}/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Full Response Data:', data);  // Log the full response data
+
+            if (data.chat_history) {
+                console.log('Chat History:', data.chat_history);  // Log chat history to console
+
+                const chatHistoryContainer = document.getElementById('chatHistoryContainer');
+                chatHistoryContainer.innerHTML = '';  // Clear any existing chat history
+
+                data.chat_history.forEach(chat => {
+                    const chatMessage = document.createElement('div');
+                    chatMessage.classList.add('message', 'ai-message');
+
+                    chatMessage.innerHTML = `
+                        <div class="chat-bubble user-bubble">
+                            <div><span class="highlight">${chat.highlighted_text}</span></div>
+                            <div>${chat.instruction}</div>
+                        </div>
+                        <div class="chat-bubble ai-bubble">
+                            <div id="aiResponse_${chat.id}">${chat.ai_response}</div>
+                            <button class="copy-button btn btn-outline-light btn-sm" data-response-id="aiResponse_${chat.id}" title="Copy AI response">
+                               <i class="align-middle me-2 far fa-fw fa-clipboard"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    // Append the message to the chat history container
+                    chatHistoryContainer.appendChild(chatMessage);
+
+                    // Add event listener to the copy button as it's created
+                    const copyButton = chatMessage.querySelector('.copy-button');
+                    copyButton.addEventListener('click', function() {
+                        const responseId = this.getAttribute('data-response-id');
+                        const aiResponse = document.getElementById(responseId).textContent;
+
+                        // Copy the AI response to the clipboard
+                        navigator.clipboard.writeText(aiResponse)
+                        .catch(err => {
+                            console.error('Failed to copy AI response: ', err);
+                        });
+                    });
+                });
+
+            } else {
+                console.log('No chat history found.');
+            }
+        })
+        .catch(error => console.error('Error fetching chat history:', error));
+    } else {
+        console.error('Contract Project ID is not defined in the button');
+    }
+});
+
+// Close the side panel
+const closePopupButton = document.getElementById('closePopup');
+closePopupButton.addEventListener('click', function() {
+    popup.classList.remove('active');
+    mainContent.style.marginRight = '0';
+});
+
+// Send AI request and display response
+const aiSendButton = document.getElementById('aiSend');
+aiSendButton.addEventListener('click', function() {
+    const contractProjectId = popup.getAttribute('data-contract-id');
+    const highlightedText = document.getElementById('highlightDisplay').textContent;
+    const instruction = document.querySelector('.expanding-textarea').value;
+
+    // Clear the input field after sending the message
+    document.querySelector('.expanding-textarea').value = '';
+
+    fetch(`http://127.0.0.1:7000/api/create-ai-chat-contract/${contractProjectId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({
+            highlighted_text: highlightedText,
+            instruction: instruction
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Append the new message to the chat history dynamically
+        const chatHistoryContainer = document.getElementById('chatHistoryContainer');
+
+        // Create the user's message bubble (right-aligned)
+        const userMessage = document.createElement('div');
+        userMessage.classList.add('message');
+        userMessage.innerHTML = `
+            <div class="chat-bubble user-bubble">
+                <div><span class="highlight">${highlightedText}</span></div>
+                <div>${instruction}</div>
+            </div>
+        `;
+
+        // Create the AI's message bubble (left-aligned) with a copy button
+        const aiMessage = document.createElement('div');
+        aiMessage.classList.add('message');
+        aiMessage.innerHTML = `
+            <div class="chat-bubble ai-bubble">
+                <div id="aiResponse_${data.id}">${data.ai_response}</div>
+                <button class="copy-button btn btn-outline-light btn-sm" data-response-id="aiResponse_${data.id}" title="Copy AI response">
+                    <i class="align-middle me-2 far fa-fw fa-clipboard"></i>
+                </button>
+            </div>
+        `;
+
+        // Append both bubbles (user and AI messages) to the chat history container
+        chatHistoryContainer.appendChild(userMessage);
+        chatHistoryContainer.appendChild(aiMessage);
+
+        // Add copy event listener to the new copy button
+        const copyButton = aiMessage.querySelector('.copy-button');
+        copyButton.addEventListener('click', function() {
+            const responseId = this.getAttribute('data-response-id');
+            const aiResponse = document.getElementById(responseId).textContent;
+
+            // Copy the AI response to the clipboard
+            navigator.clipboard.writeText(aiResponse)
+            .then(() => {
+                alert('AI response copied to clipboard!');
+            })
+            .catch(err => {
+                console.error('Failed to copy AI response: ', err);
+            });
+        });
+
+        // Optionally, scroll to the bottom of the chat history after appending
+        chatHistoryContainer.scrollTop = chatHistoryContainer.scrollHeight;
+    })
+    .catch(error => console.error('Error:', error));
+});
+
+const textarea = document.getElementById('aiInput');
+const sendButton = document.getElementById('aiSend');
+
+// Function to auto-resize the textarea
+textarea.addEventListener('input', function () {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+});
+
+// Listen for "Enter" key press to send message
+textarea.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { // Check if Enter is pressed and Shift is not held down
+        e.preventDefault(); // Prevent adding a new line in the textarea
+        sendMessage(); // Call the function to send the message
+    }
+});
+
+// Existing event listener for button click
+sendButton.addEventListener('click', function() {
+    sendMessage(); // Call the function to send the message
+});
+
+// Function to send the message
+function sendMessage() {
+    const contractProjectId = popup.getAttribute('data-contract-id');
+    const highlightedText = document.getElementById('highlightDisplay').textContent;
+    const instruction = textarea.value;
+
+    // Clear the input field after sending the message
+    textarea.value = '';
+    textarea.style.height = 'auto'; // Reset height
+
+    fetch(`http://127.0.0.1:7000/api/create-ai-chat-contract/${contractProjectId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,
+        },
+        body: JSON.stringify({
+            highlighted_text: highlightedText,
+            instruction: instruction
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Append the new message to the chat history dynamically
+        const chatHistoryContainer = document.getElementById('chatHistoryContainer');
+
+        // Create the user's message bubble (right-aligned)
+        const userMessage = document.createElement('div');
+        userMessage.classList.add('message');
+        userMessage.innerHTML = `
+            <div class="chat-bubble user-bubble">
+                <div><span class="highlight">${highlightedText}</span></div>
+                <div>${instruction}</div>
+            </div>
+        `;
+
+        // Create the AI's message bubble (left-aligned) with a copy button
+        const aiMessage = document.createElement('div');
+        aiMessage.classList.add('message');
+        aiMessage.innerHTML = `
+            <div class="chat-bubble ai-bubble">
+                <div id="aiResponse_${data.id}">${data.ai_response}</div>
+                <button class="copy-button btn btn-outline-light btn-sm" data-response-id="aiResponse_${data.id}" title="Copy AI response">
+                    <i class="align-middle me-2 far fa-fw fa-clipboard"></i>
+                </button>
+            </div>
+        `;
+
+        // Append both bubbles (user and AI messages) to the chat history container
+        chatHistoryContainer.appendChild(userMessage);
+        chatHistoryContainer.appendChild(aiMessage);
+
+        // Add copy event listener to the new copy button
+        const copyButton = aiMessage.querySelector('.copy-button');
+        copyButton.addEventListener('click', function() {
+            const responseId = this.getAttribute('data-response-id');
+            const aiResponse = document.getElementById(responseId).textContent;
+
+            // Copy the AI response to the clipboard
+            navigator.clipboard.writeText(aiResponse)
+            .then(() => {
+                alert('AI response copied to clipboard!');
+            })
+            .catch(err => {
+                console.error('Failed to copy AI response: ', err);
+            });
+        });
+
+        // Optionally, scroll to the bottom of the chat history after appending
+        chatHistoryContainer.scrollTop = chatHistoryContainer.scrollHeight;
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+
+</script>
+
+
+{% endblock %}
